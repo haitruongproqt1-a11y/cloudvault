@@ -59,15 +59,30 @@ export default function LoginView({ onLoginSuccess }) {
     try {
       setLoading(true);
 
-      const firebaseConfig = authConfig.firebase;
+      const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+      // Sử dụng First-Party domain qua Reverse Proxy backend khi chạy trên Render hoặc Domain riêng
+      // Điều này ngăn chặn 100% việc trình duyệt di động kích hoạt Storage Partitioning chặn sessionStorage
+      const customAuthDomain = !isLocal && window.location.host 
+        ? window.location.host 
+        : (authConfig.firebase.authDomain || `${authConfig.firebase.projectId}.firebaseapp.com`);
+
+      const firebaseConfig = {
+        ...authConfig.firebase,
+        authDomain: customAuthDomain
+      };
+
       const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
       const auth = getAuth(app);
 
-      // KHẮC PHỤC LỖI TRÊN MOBILE: Bắt buộc dùng browserLocalPersistence để không bị mất state khi mở popup
+      // KHẮC PHỤC LỖI TRÊN MOBILE: Dùng indexedDBLocalPersistence hoặc browserLocalPersistence
       try {
-        await setPersistence(auth, browserLocalPersistence);
-      } catch (pErr) {
-        console.warn('Persistence fallback:', pErr);
+        await setPersistence(auth, indexedDBLocalPersistence);
+      } catch (e1) {
+        try {
+          await setPersistence(auth, browserLocalPersistence);
+        } catch (e2) {
+          console.warn('Persistence fallback:', e2);
+        }
       }
 
       const provider = new GoogleAuthProvider();

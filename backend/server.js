@@ -6,6 +6,7 @@ import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
 import dotenv from 'dotenv';
+import { createProxyMiddleware } from 'http-proxy-middleware';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -21,6 +22,24 @@ import { STORAGE_DIR } from './storage.js';
 const app = express();
 const PORT = process.env.PORT || 5000;
 const SESSION_SECRET = process.env.SESSION_SECRET || 'cloudvault_super_secret_session_2026';
+
+// Cấu hình đích đến cho Firebase Auth Reverse Proxy
+const firebaseAuthTarget = process.env.FIREBASE_AUTH_DOMAIN 
+  ? `https://${process.env.FIREBASE_AUTH_DOMAIN}` 
+  : `https://${process.env.FIREBASE_PROJECT_ID || 'luutru-20824'}.firebaseapp.com`;
+
+// Ủy quyền ngược (Reverse Proxy) tuyến đường /__/auth sang Firebase Hosting Handler
+// Giúp trình duyệt di động xem xác thực là First-Party (cùng miền), khắc phục triệt để lỗi missing initial state
+app.use(
+  '/__/auth',
+  createProxyMiddleware({
+    target: firebaseAuthTarget,
+    changeOrigin: true,
+    secure: true,
+    ws: true,
+    logLevel: 'warn'
+  })
+);
 
 // Cho phép CORS (với credentials để hỗ trợ cookie phiên làm việc)
 app.use(
@@ -59,7 +78,7 @@ const frontendDist = path.resolve(__dirname, '../frontend/dist');
 if (fs.existsSync(frontendDist)) {
   app.use(express.static(frontendDist));
   app.get('*', (req, res) => {
-    if (!req.path.startsWith('/api')) {
+    if (!req.path.startsWith('/api') && !req.path.startsWith('/__/auth')) {
       res.sendFile(path.join(frontendDist, 'index.html'));
     }
   });
@@ -70,6 +89,7 @@ app.listen(PORT, '0.0.0.0', () => {
   console.log(`====================================================================`);
   console.log(`🚀 Máy chủ CloudVault 2.0 đang chạy tại địa chỉ: http://localhost:${PORT}`);
   console.log(`📁 Thư mục lưu trữ tệp vật lý: ${STORAGE_DIR}`);
+  console.log(`🛡️ Tuyến đường Firebase Auth Proxy: /__/auth ➔ ${firebaseAuthTarget}`);
   console.log(`🔑 Đăng nhập Gmail thật & Đám mây Backblaze B2 (S3 API) đã sẵn sàng`);
   console.log(`📱 Sẵn sàng kết nối Máy tính (PC) và Điện thoại di động qua cổng ${PORT}`);
   console.log(`====================================================================`);
