@@ -12,7 +12,14 @@ import {
   ExternalLink
 } from 'lucide-react';
 import { initializeApp, getApps } from 'firebase/app';
-import { getAuth, signInWithPopup, GoogleAuthProvider } from 'firebase/auth';
+import { 
+  getAuth, 
+  setPersistence, 
+  browserLocalPersistence, 
+  indexedDBLocalPersistence,
+  signInWithPopup, 
+  GoogleAuthProvider 
+} from 'firebase/auth';
 import { apiFetch } from '../config/api.js';
 
 export default function LoginView({ onLoginSuccess }) {
@@ -55,6 +62,14 @@ export default function LoginView({ onLoginSuccess }) {
       const firebaseConfig = authConfig.firebase;
       const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
       const auth = getAuth(app);
+
+      // KHẮC PHỤC LỖI TRÊN MOBILE: Bắt buộc dùng browserLocalPersistence để không bị mất state khi mở popup
+      try {
+        await setPersistence(auth, browserLocalPersistence);
+      } catch (pErr) {
+        console.warn('Persistence fallback:', pErr);
+      }
+
       const provider = new GoogleAuthProvider();
 
       // Buộc chọn tài khoản Google
