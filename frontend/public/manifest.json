@@ -1,0 +1,17 @@
+{
+  "short_name": "CloudVault",
+  "name": "CloudVault 1TB - Lưu Trữ Ảnh & Video",
+  "description": "Kho lưu trữ ảnh và video đám mây riêng tư 1TB vĩnh cửu",
+  "icons": [
+    {
+      "src": "/logo.svg",
+      "type": "image/svg+xml",
+      "sizes": "192x192 512x512"
+    }
+  ],
+  "start_url": "/",
+  "background_color": "#0f172a",
+  "theme_color": "#10b981",
+  "display": "standalone",
+  "orientation": "any"
+}

@@ -1,0 +1,42 @@
+# Thư viện dependencies
+node_modules/
+*/node_modules/
+
+# Bản build tạm
+dist/
+build/
+*/dist/
+*/build/
+
+# Thư mục dữ liệu & lưu trữ cục bộ
+cloudvault-storage/
+data/
+*.db
+*.db-wal
+*.db-shm
+
+# File biến môi trường chứa API Key bảo mật cá nhân
+.env
+.env.local
+.env.*.local
+backend/.env
+frontend/.env
+
+# Tệp tạm hệ thống & IDE
+.DS_Store
+Thumbs.db
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.idea/
+.vscode/
+
+# Thư mục build Android tạm
+android/.gradle/
+android/app/build/
+android/build/
+frontend/android/.gradle/
+frontend/android/app/build/
+frontend/android/build/
+frontend/android/captures/
