@@ -241,19 +241,37 @@ export default function MediaGrid({
 
   if (items.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[450px] text-center px-4">
-        <div className="w-20 h-20 bg-slate-800/80 rounded-3xl flex items-center justify-center mb-4 border border-slate-700/60 shadow-xl">
-          <UploadCloud className="w-10 h-10 text-emerald-400" />
+      <div className="flex-1 flex flex-col items-center justify-center min-h-[62vh] text-center px-4 py-8">
+        <div className="relative mb-5">
+          {/* Vòng hào quang phát sáng nhẹ */}
+          <div className="absolute inset-0 bg-emerald-500/20 blur-2xl rounded-full" />
+          <div className="relative w-20 h-20 sm:w-24 sm:h-24 bg-gradient-to-tr from-slate-900 to-slate-800 rounded-3xl flex items-center justify-center border border-emerald-500/30 shadow-2xl shadow-emerald-500/10">
+            <UploadCloud className="w-10 h-10 sm:w-12 sm:h-12 text-emerald-400 animate-pulse" />
+          </div>
         </div>
-        <h3 className="text-lg font-bold text-slate-100 mb-1">Chưa có tệp nào trong mục này</h3>
-        <p className="text-sm text-slate-400 max-w-sm mb-6">
-          Kho lưu trữ 1TB hỗ trợ ảnh, video, tài liệu PDF, DOCX, ZIP, EXE... Hãy tải tệp đầu tiên lên!
+
+        <h3 className="text-base sm:text-xl font-bold text-white mb-1.5 tracking-tight">
+          Chưa có tệp nào trong mục này
+        </h3>
+        <p className="text-xs sm:text-sm text-slate-400 max-w-xs sm:max-w-md mb-5 leading-relaxed">
+          Kho lưu trữ 10 GB đám mây Backblaze B2. Hỗ trợ mọi định dạng: Ảnh, Video 4K, Tài liệu PDF/Office, Tệp nén ZIP/APK.
         </p>
+
+        {/* Các chip định dạng hỗ trợ */}
+        <div className="flex flex-wrap items-center justify-center gap-1.5 mb-6 max-w-xs">
+          {['Ảnh', 'Video', 'PDF', 'Word', 'Excel', 'ZIP', 'APK'].map((tag) => (
+            <span key={tag} className="text-[10px] bg-slate-800/80 text-slate-400 border border-slate-700/60 px-2 py-0.5 rounded-full font-medium">
+              {tag}
+            </span>
+          ))}
+        </div>
+
         <button
           onClick={onOpenUpload}
-          className="px-5 py-2.5 bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 text-white rounded-xl text-sm font-semibold shadow-lg shadow-emerald-600/30 transition active:scale-95"
+          className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 rounded-2xl text-xs sm:text-sm font-bold shadow-xl shadow-emerald-500/25 transition active:scale-95 cursor-pointer"
         >
-          Tải tệp tin lên ngay
+          <UploadCloud className="w-4 h-4" />
+          <span>Tải tệp tin lên ngay</span>
         </button>
       </div>
     );
@@ -358,8 +376,8 @@ export default function MediaGrid({
                     )}
                   </div>
 
-                  {/* Gradient overlay on hover */}
-                  <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-transparent to-black/40 opacity-0 group-hover:opacity-100 transition-opacity" />
+                  {/* Gradient overlay: Luôn hiện nhẹ ở đáy trên mobile, trên desktop hiện khi hover */}
+                  <div className="absolute inset-0 bg-gradient-to-t from-slate-950/85 via-slate-950/10 to-transparent opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity" />
 
                   {/* Top-right Favorite Star */}
                   <button
@@ -367,23 +385,23 @@ export default function MediaGrid({
                       e.stopPropagation();
                       onToggleFavorite(item.id);
                     }}
-                    className={`absolute top-2 right-2 z-10 p-1 rounded-full transition-all ${
+                    className={`absolute top-2 right-2 z-10 p-1.5 rounded-full backdrop-blur-md bg-black/40 transition-all active:scale-90 ${
                       item.is_favorite 
                         ? 'text-amber-400 opacity-100' 
-                        : 'text-white/70 hover:text-amber-300 opacity-0 group-hover:opacity-100'
+                        : 'text-white/70 hover:text-amber-300 opacity-80 sm:opacity-0 sm:group-hover:opacity-100'
                     }`}
                     title={item.is_favorite ? 'Bỏ yêu thích' : 'Yêu thích'}
                   >
-                    <Star className={`w-4 h-4 ${item.is_favorite ? 'fill-amber-400' : ''}`} />
+                    <Star className={`w-3.5 h-3.5 sm:w-4 sm:h-4 ${item.is_favorite ? 'fill-amber-400' : ''}`} />
                   </button>
 
-                  {/* Bottom info bar */}
-                  <div className="absolute bottom-2 right-2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity z-10">
+                  {/* Bottom info bar - Tải về & Xóa */}
+                  <div className="absolute bottom-2 right-2 flex items-center gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity z-10">
                     <a
                       href={item.download_url}
                       download={item.original_name}
                       onClick={(e) => e.stopPropagation()}
-                      className="p-1 rounded-lg bg-black/50 hover:bg-slate-800 text-white/80 hover:text-white backdrop-blur-sm transition"
+                      className="p-1.5 rounded-lg bg-black/60 hover:bg-slate-800 text-white/90 hover:text-white backdrop-blur-md transition active:scale-90"
                       title="Tải về máy"
                     >
                       <Download className="w-3.5 h-3.5" />
@@ -393,17 +411,17 @@ export default function MediaGrid({
                         e.stopPropagation();
                         onDeleteMedia(item.id, false);
                       }}
-                      className="p-1 rounded-lg bg-black/50 hover:bg-rose-900/60 text-white/80 hover:text-rose-400 backdrop-blur-sm transition"
+                      className="p-1.5 rounded-lg bg-black/60 hover:bg-rose-900/70 text-white/90 hover:text-rose-400 backdrop-blur-md transition active:scale-90"
                       title="Chuyển vào thùng rác"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
                     </button>
                   </div>
 
-                  {/* File size & title indicator */}
-                  <div className="absolute bottom-2 left-2 right-12 truncate text-[11px] text-slate-300 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity">
-                    <p className="truncate font-medium">{item.original_name}</p>
-                    <p className="text-[10px] text-slate-400">{item.size_formatted}</p>
+                  {/* File size & title indicator: Hiển thị tên file và kích thước rõ ràng trên mobile */}
+                  <div className="absolute bottom-2 left-2.5 right-16 truncate text-[11px] text-slate-200 pointer-events-none opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity drop-shadow-md">
+                    <p className="truncate font-semibold text-white">{item.original_name}</p>
+                    <p className="text-[10px] text-emerald-400/90 font-mono">{item.size_formatted}</p>
                   </div>
                 </div>
               );

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { Upload } from 'lucide-react';
 import Navbar from './components/Navbar';
 import Sidebar from './components/Sidebar';
 import BottomNav from './components/BottomNav';
@@ -289,8 +290,8 @@ export default function App() {
           onOpenMobileConnect={() => setIsMobileConnectOpen(true)}
         />
 
-        {/* Content Container */}
-        <main className="flex-1 p-3 sm:p-6 overflow-y-auto max-w-full">
+        {/* Content Container: Bổ sung pb-28 cho mobile để không bị che bởi BottomNav và FAB */}
+        <main className="flex-1 p-3 sm:p-6 overflow-y-auto max-w-full pb-28 md:pb-6">
           {currentTab === 'storage' ? (
             <StorageView
               storageMetrics={storageMetrics}
@@ -319,6 +320,16 @@ export default function App() {
           )}
         </main>
       </div>
+
+      {/* Floating Action Button (FAB) Upload dành riêng cho Mobile - Tiện lợi cho ngón cái */}
+      <button
+        onClick={() => setIsUploadOpen(true)}
+        className="md:hidden fixed bottom-20 right-4 z-40 flex items-center gap-2 px-4 py-3 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 font-extrabold rounded-full shadow-2xl shadow-emerald-500/40 active:scale-95 transition-all cursor-pointer border border-emerald-300/40"
+        title="Tải tệp tin lên"
+      >
+        <Upload className="w-5 h-5 stroke-[2.5]" />
+        <span className="text-xs tracking-tight">Tải lên</span>
+      </button>
 
       {/* Mobile Bottom Navigation */}
       <BottomNav
