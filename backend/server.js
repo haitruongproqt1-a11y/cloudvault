@@ -24,12 +24,10 @@ const PORT = process.env.PORT || 5000;
 const SESSION_SECRET = process.env.SESSION_SECRET || 'cloudvault_super_secret_session_2026';
 
 // Cấu hình đích đến cho Firebase Auth Reverse Proxy
-const firebaseAuthTarget = process.env.FIREBASE_AUTH_DOMAIN 
-  ? `https://${process.env.FIREBASE_AUTH_DOMAIN}` 
-  : `https://${process.env.FIREBASE_PROJECT_ID || 'luutru-20824'}.firebaseapp.com`;
+const firebaseAuthDomain = process.env.FIREBASE_AUTH_DOMAIN || `${process.env.FIREBASE_PROJECT_ID || 'luutru-20824'}.firebaseapp.com`;
+const firebaseAuthTarget = `https://${firebaseAuthDomain}/__/auth`;
 
 // Ủy quyền ngược (Reverse Proxy) tuyến đường /__/auth sang Firebase Hosting Handler
-// Giúp trình duyệt di động xem xác thực là First-Party (cùng miền), khắc phục triệt để lỗi missing initial state
 app.use(
   '/__/auth',
   createProxyMiddleware({

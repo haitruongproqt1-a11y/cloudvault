@@ -59,16 +59,9 @@ export default function LoginView({ onLoginSuccess }) {
     try {
       setLoading(true);
 
-      const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-      // Sử dụng First-Party domain qua Reverse Proxy backend khi chạy trên Render hoặc Domain riêng
-      // Điều này ngăn chặn 100% việc trình duyệt di động kích hoạt Storage Partitioning chặn sessionStorage
-      const customAuthDomain = !isLocal && window.location.host 
-        ? window.location.host 
-        : (authConfig.firebase.authDomain || `${authConfig.firebase.projectId}.firebaseapp.com`);
-
       const firebaseConfig = {
         ...authConfig.firebase,
-        authDomain: customAuthDomain
+        authDomain: authConfig.firebase.authDomain || `${authConfig.firebase.projectId}.firebaseapp.com`
       };
 
       const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];

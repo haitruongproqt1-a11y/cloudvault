@@ -94,6 +94,10 @@ public class MainActivity extends BridgeActivity {
                     }
                     authDialog = new Dialog(MainActivity.this, android.R.style.Theme_Black_NoTitleBar_Fullscreen);
                     authDialog.setContentView(popupWebView);
+                    authDialog.setCancelable(true);
+                    authDialog.setOnCancelListener(dialogInterface -> {
+                        try { popupWebView.destroy(); } catch (Exception ignored) {}
+                    });
                     if (authDialog.getWindow() != null) {
                         authDialog.getWindow().setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT);
                     }
