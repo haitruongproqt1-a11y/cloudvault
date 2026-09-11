@@ -6,12 +6,23 @@
  * 3. Môi trường Phát triển Cục bộ (Localhost)
  */
 
-// Lấy địa chỉ API máy chủ từ biến môi trường (Ví dụ: https://cloudvault-2026.onrender.com)
-export const API_BASE_URL = (
-  import.meta.env.VITE_API_URL || 
-  import.meta.env.PRODUCTION_API_URL || 
-  ''
-).replace(/\/+$/, '');
+// Lấy địa chỉ API máy chủ từ biến môi trường hoặc fallback về máy chủ Render khi chạy trong APK
+const getInitialBaseUrl = () => {
+  if (import.meta.env.VITE_API_URL) return import.meta.env.VITE_API_URL;
+  if (import.meta.env.PRODUCTION_API_URL) return import.meta.env.PRODUCTION_API_URL;
+  
+  // Nhận diện nếu đang chạy trong môi trường App Di Động Capacitor (localhost / native scheme)
+  if (typeof window !== 'undefined') {
+    const isCapacitorNative = window.location.protocol === 'capacitor:' || 
+      (window.location.hostname === 'localhost' && (!window.location.port || window.location.port === '80'));
+    if (isCapacitorNative) {
+      return 'https://cloudvault-q4o9.onrender.com';
+    }
+  }
+  return '';
+};
+
+export const API_BASE_URL = getInitialBaseUrl().replace(/\/+$/, '');
 
 /**
  * Trả về đường dẫn API hoàn chỉnh
