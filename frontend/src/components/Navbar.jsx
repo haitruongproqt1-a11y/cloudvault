@@ -138,54 +138,63 @@ export default function Navbar({
                   )}
                 </button>
 
-                {/* Dropdown Menu tài khoản */}
+            {/* Dropdown Menu tài khoản */}
                 {showUserMenu && (
-                  <div className="absolute right-0 top-full mt-2 w-64 bg-slate-900/98 border border-slate-700/80 rounded-2xl p-3 shadow-2xl z-50 animate-in fade-in zoom-in-95 backdrop-blur-xl">
-                    <div className="flex items-center gap-2.5 pb-2.5 border-b border-slate-800 mb-2">
-                      {user.avatar ? (
-                        <img src={user.avatar} alt={user.name} className="w-10 h-10 rounded-xl object-cover ring-1 ring-emerald-500" />
-                      ) : (
-                        <div className="w-10 h-10 rounded-xl bg-emerald-600 text-white flex items-center justify-center font-bold text-sm">
-                          {user.name ? user.name.charAt(0).toUpperCase() : 'U'}
+                  <>
+                    {/* Overlay để đóng menu khi click ngoài */}
+                    <div 
+                      className="fixed inset-0 z-40" 
+                      onClick={() => setShowUserMenu(false)} 
+                    />
+                    <div className="absolute right-0 top-full mt-2 w-[min(280px,calc(100vw-2rem))] bg-slate-900/98 border border-slate-700/80 rounded-2xl p-3 shadow-2xl z-50 backdrop-blur-xl"
+                      style={{ transform: 'none' }}
+                    >
+                      <div className="flex items-center gap-2.5 pb-2.5 border-b border-slate-800 mb-2">
+                        {user.avatar ? (
+                          <img src={user.avatar} alt={user.name} className="w-10 h-10 rounded-xl object-cover ring-1 ring-emerald-500 flex-shrink-0" />
+                        ) : (
+                          <div className="w-10 h-10 rounded-xl bg-emerald-600 text-white flex items-center justify-center font-bold text-sm flex-shrink-0">
+                            {user.name ? user.name.charAt(0).toUpperCase() : 'U'}
+                          </div>
+                        )}
+                        <div className="min-w-0 flex-1">
+                          <p className="text-xs font-bold text-white truncate">{user.name}</p>
+                          <p className="text-[11px] text-slate-400 truncate">{user.email}</p>
+                          <div className="flex items-center gap-1 mt-0.5 text-[10px] text-emerald-400 font-medium">
+                            <ShieldCheck className="w-3 h-3 flex-shrink-0" />
+                            <span>Tài khoản riêng tư</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Xem chi tiết dung lượng */}
+                      {storageMetrics && (
+                        <div className="mb-2 p-2 bg-slate-950/60 rounded-xl border border-slate-800">
+                          <div className="flex justify-between text-[11px] text-slate-300 mb-1">
+                            <span>Dung lượng đã dùng:</span>
+                            <span className="font-bold text-emerald-400">{storageMetrics.used_formatted} / {storageMetrics.quota_formatted}</span>
+                          </div>
+                          <div className="w-full h-1.5 bg-slate-800 rounded-full overflow-hidden">
+                            <div 
+                              className="h-full bg-gradient-to-r from-emerald-500 to-sky-500 rounded-full"
+                              style={{ width: `${Math.min(100, Math.max(storageMetrics.used_bytes > 0 ? 3 : 0, storageMetrics.used_percent))}%` }}
+                            />
+                          </div>
                         </div>
                       )}
-                      <div className="overflow-hidden">
-                        <p className="text-xs font-bold text-white truncate">{user.name}</p>
-                        <p className="text-[11px] text-slate-400 truncate">{user.email}</p>
-                        <div className="flex items-center gap-1 mt-0.5 text-[10px] text-emerald-400 font-medium">
-                          <ShieldCheck className="w-3 h-3" />
-                          <span>Private Tenant</span>
-                        </div>
-                      </div>
+
+                      <button
+                        onClick={() => {
+                          setShowUserMenu(false);
+                          onLogout();
+                        }}
+                        className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 transition"
+                      >
+                        <LogOut className="w-4 h-4" />
+                        <span>Đăng xuất Gmail</span>
+                      </button>
                     </div>
-
-                    {/* Xem chi tiết dung lượng */}
-                    {storageMetrics && (
-                      <div className="mb-2 p-2 bg-slate-950/60 rounded-xl border border-slate-800">
-                        <div className="flex justify-between text-[11px] text-slate-300 mb-1">
-                          <span>Dung lượng đã dùng:</span>
-                          <span className="font-bold text-emerald-400">{storageMetrics.used_formatted} / {storageMetrics.quota_formatted}</span>
-                        </div>
-                        <div className="w-full h-1.5 bg-slate-800 rounded-full overflow-hidden">
-                          <div 
-                            className="h-full bg-gradient-to-r from-emerald-500 to-sky-500 rounded-full"
-                            style={{ width: `${Math.min(100, Math.max(storageMetrics.used_bytes > 0 ? 3 : 0, storageMetrics.used_percent))}%` }}
-                          />
-                        </div>
-                      </div>
-                    )}
-
-                    <button
-                      onClick={() => {
-                        setShowUserMenu(false);
-                        onLogout();
-                      }}
-                      className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 transition"
-                    >
-                      <LogOut className="w-4 h-4" />
-                      <span>Đăng xuất Gmail</span>
-                    </button>
-                  </div>
+                  </>
                 )}
               </div>
             )}
