@@ -125,21 +125,23 @@ export function getCloudStatus() {
 }
 
 /**
- * Tải tệp trực tiếp lên Backblaze B2
+ * Tải tệp trực tiếp lên Backblaze B2 (Kèm Metadata người dùng & Private Tenant)
  */
-export async function uploadToB2({ key, body, mimeType }) {
+export async function uploadToB2({ key, body, mimeType, metadata = {} }) {
   if (b2Client && b2BucketName) {
     try {
       console.log(`☁️ [Backblaze B2] Đang tải file lên đám mây B2: ${key}...`);
-      await b2Client.send(
-        new PutObjectCommand({
-          Bucket: b2BucketName,
-          Key: key,
-          Body: body,
-          ContentType: mimeType || 'application/octet-stream'
-        })
-      );
-      console.log(`✅ [Backblaze B2] Tải lên B2 THÀNH CÔNG: ${key}`);
+      const putParams = {
+        Bucket: b2BucketName,
+        Key: key,
+        Body: body,
+        ContentType: mimeType || 'application/octet-stream'
+      };
+      if (metadata && typeof metadata === 'object' && Object.keys(metadata).length > 0) {
+        putParams.Metadata = metadata;
+      }
+      await b2Client.send(new PutObjectCommand(putParams));
+      console.log(`✅ [Backblaze B2] Tải lên B2 THÀNH CÔNG (Kèm Metadata): ${key}`);
       return { backend: 'b2', key };
     } catch (b2Error) {
       console.error(`❌ [Backblaze B2] Lỗi tải lên B2: ${b2Error.message}`);

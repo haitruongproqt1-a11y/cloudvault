@@ -19,11 +19,17 @@ export default function MobileConnectModal({ onClose }) {
   const [copied, setCopied] = useState(false);
 
   useEffect(() => {
-    apiFetch('/api/network/connect-info')
+    const currentOrigin = typeof window !== 'undefined' ? window.location.origin : '';
+    const queryUrl = currentOrigin ? `?url=${encodeURIComponent(currentOrigin)}` : '';
+
+    apiFetch(`/api/network/connect-info${queryUrl}`)
       .then(res => res.json())
       .then(data => {
         if (data.success) {
-          setConnectInfo(data);
+          setConnectInfo({
+            ...data,
+            primaryUrl: currentOrigin || data.primaryUrl
+          });
         }
         setLoading(false);
       })
@@ -143,13 +149,13 @@ export default function MobileConnectModal({ onClose }) {
 
                 <p className="text-[11px] text-slate-400 flex items-center gap-1.5">
                   <ShieldCheck className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                  <span>Dữ liệu truyền tải trực tiếp trong mạng nội bộ gia đình với tốc độ Wi-Fi tối đa.</span>
+                  <span>Dữ liệu kết nối trực tiếp đến hệ thống CloudVault của bạn qua đường truyền mã hóa an toàn.</span>
                 </p>
               </div>
             </>
           ) : (
             <div className="text-center text-rose-400 text-xs">
-              Không thể lấy thông tin IP mạng. Vui lòng kiểm tra lại kết nối Wi-Fi của máy tính.
+              Không thể tạo mã QR kết nối. Vui lòng thử lại.
             </div>
           )}
         </div>

@@ -85,8 +85,8 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_media_sha256 ON media(sha256);
 `);
 
-// Thiết lập hạn mức dung lượng từ biến môi trường MAX_STORAGE_GB (Mặc định: 100 GB)
-const maxStorageGb = parseFloat(process.env.MAX_STORAGE_GB) || 100;
+// Thiết lập hạn mức dung lượng từ biến môi trường MAX_STORAGE_GB (Mặc định: 10 GB gói miễn phí B2)
+const maxStorageGb = parseFloat(process.env.MAX_STORAGE_GB) || 10;
 const defaultQuotaBytes = Math.round(maxStorageGb * 1024 * 1024 * 1024);
 
 db.prepare('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)').run(

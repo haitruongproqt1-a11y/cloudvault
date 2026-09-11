@@ -241,13 +241,24 @@ router.post('/auth/logout', (req, res) => {
 // B. CÁC API DỮ LIỆU BẢO VỆ NGHIÊM NGẶT PRIVATE TENANT
 // ====================================================================
 
-// 6. GET /api/media - Lấy danh sách tệp CHỈ của người đang đăng nhập
-router.get('/media', requireAuth, (req, res) => {
+// Hàm xử lý chung an toàn cho truy vấn danh sách tệp tin của người dùng
+const handleGetFilesList = (req, res) => {
   try {
     const userId = req.user.id;
+    const requestedUid = req.query.uid;
+
+    // BẢO MẬT PRIVATE TENANT: Nếu request truyền uid, bắt buộc phải trùng khớp với userId của token đang đăng nhập
+    if (requestedUid && requestedUid !== userId) {
+      console.warn(`🚨 [Security] Cảnh báo rò rỉ: User ${userId} cố tình truy cập tệp của user ${requestedUid}`);
+      return res.status(403).json({
+        success: false,
+        error: 'Từ chối truy cập: Bạn không có quyền xem tệp tin của tài khoản khác (Bảo mật Private Tenant)'
+      });
+    }
+
     const { category, favorite, search, sort, is_deleted = '0' } = req.query;
 
-    // BẢO MẬT PRIVATE TENANT: Lọc chặt chẽ theo user_id
+    // CHỈ TRẢ VỀ những tệp tin thuộc sở hữu của người dùng đó (trùng khớp user_id = userId)
     let query = 'SELECT * FROM media WHERE user_id = ? AND is_deleted = ?';
     const params = [userId, parseInt(is_deleted, 10)];
 
@@ -281,17 +292,22 @@ router.get('/media', requireAuth, (req, res) => {
       download_url: `/api/media/${item.id}/download`
     }));
 
-    res.json({ success: true, items: enriched });
+    res.json({ success: true, items: enriched, count: enriched.length, uid: userId });
   } catch (err) {
-    console.error('❌ [Media] Lỗi truy vấn danh sách tệp:', err);
+    console.error('❌ [Files] Lỗi truy vấn danh sách tệp:', err);
     res.status(500).json({ success: false, error: err.message });
   }
-});
+};
 
-// 7. POST /api/upload - Tải lên tệp gắn trực tiếp với userId của phiên đăng nhập
-router.post('/upload', requireAuth, upload.array('files', 100), async (req, res) => {
+// 6. GET /api/media & GET /api/files - Lấy danh sách tệp CHỈ của người đang đăng nhập (Private Tenant)
+router.get('/media', requireAuth, handleGetFilesList);
+router.get('/files', requireAuth, handleGetFilesList);
+
+// 7. POST /api/upload & POST /api/files/upload - Tải lên tệp gắn trực tiếp với userId & metadata trên B2
+const handleFileUpload = async (req, res) => {
   try {
     const userId = req.user.id;
+    const userEmail = req.user.email || '';
     const files = req.files;
     if (!files || files.length === 0) {
       return res.status(400).json({ success: false, error: 'Không có tệp nào được gửi' });
@@ -313,6 +329,7 @@ router.post('/upload', requireAuth, upload.array('files', 100), async (req, res)
       const ext = path.extname(file.originalname).toLowerCase();
       const finalFilename = `${id}${ext}`;
       
+      // Đặt trong thư mục ảo theo UID người dùng: users/${userId}/...
       const relativeStoragePath = `users/${userId}/${yearMonth}/${finalFilename}`.replace(/\\/g, '/');
       const targetFilePath = path.join(userStorageDir, finalFilename);
 
@@ -322,12 +339,17 @@ router.post('/upload', requireAuth, upload.array('files', 100), async (req, res)
       const category = getMediaCategory(file.mimetype, file.originalname);
       const createdAt = now.toISOString();
 
-      // Đọc file buffer và thực hiện tải lên Cloudflare R2 -> Failover Backblaze B2
+      // Đọc file buffer và thực hiện tải lên Backblaze B2 (kèm Metadata UID của chủ sở hữu)
       const fileBuffer = fs.readFileSync(targetFilePath);
       const uploadResult = await uploadWithFailover({
         key: relativeStoragePath,
         body: fileBuffer,
-        mimeType: file.mimetype
+        mimeType: file.mimetype,
+        metadata: {
+          'owner-uid': userId,
+          'owner-email': userEmail,
+          'original-name': encodeURIComponent(file.originalname).slice(0, 500)
+        }
       });
 
       insertStmt.run(
@@ -355,7 +377,8 @@ router.post('/upload', requireAuth, upload.array('files', 100), async (req, res)
         storage_backend: uploadResult.backend,
         url: `/api/media/${id}/view`,
         download_url: `/api/media/${id}/download`,
-        created_at: createdAt
+        created_at: createdAt,
+        uid: userId
       });
     }
 
@@ -364,7 +387,10 @@ router.post('/upload', requireAuth, upload.array('files', 100), async (req, res)
     console.error('❌ [Upload] Lỗi xử lý tải lên tệp:', err);
     res.status(500).json({ success: false, error: err.message });
   }
-});
+};
+
+router.post('/upload', requireAuth, upload.array('files', 100), handleFileUpload);
+router.post('/files/upload', requireAuth, upload.array('files', 100), handleFileUpload);
 
 // 8. GET /api/media/:id/view - Xem tệp có bảo mật quyền sở hữu Private Tenant
 router.get('/media/:id/view', requireAuth, async (req, res) => {
@@ -634,27 +660,45 @@ router.get('/storage/large-files', requireAuth, (req, res) => {
   }
 });
 
-// 18. GET /api/network/connect-info - Lấy mã QR kết nối Mobile
+// 18. GET /api/network/connect-info - Lấy mã QR kết nối Mobile theo URL thực tế của trang web
 router.get('/network/connect-info', async (req, res) => {
   try {
-    const networkInterfaces = os.networkInterfaces();
-    const addresses = [];
+    // HỦY BỎ QUÉT IP LAN: Ưu tiên URL từ trình duyệt gửi lên hoặc origin của request
+    let connectUrl = '';
 
-    for (const name of Object.keys(networkInterfaces)) {
-      for (const net of networkInterfaces[name]) {
-        if (net.family === 'IPv4' && !net.internal && !net.address.startsWith('169.254')) {
-          addresses.push({
-            name,
-            ip: net.address
-          });
-        }
+    if (req.query.url) {
+      try {
+        const parsed = new URL(req.query.url);
+        connectUrl = parsed.origin;
+      } catch (e) {
+        connectUrl = req.query.url.trim();
       }
     }
 
-    const port = process.env.PORT || 5000;
-    const primaryAddress = addresses.find(a => /wi-?fi/i.test(a.name)) || addresses[0] || { ip: 'localhost', name: 'local' };
-    const connectUrl = `http://${primaryAddress.ip}:${port}`;
+    if (!connectUrl && req.headers.origin) {
+      connectUrl = req.headers.origin;
+    }
 
+    if (!connectUrl && req.headers.referer) {
+      try {
+        const parsedRef = new URL(req.headers.referer);
+        connectUrl = parsedRef.origin;
+      } catch (e) {}
+    }
+
+    // Fallback nếu không có header (ví dụ gọi trực tiếp qua curl)
+    if (!connectUrl) {
+      const prodUrl = process.env.PRODUCTION_API_URL;
+      if (prodUrl && prodUrl.startsWith('http')) {
+        connectUrl = prodUrl.replace(/\/+$/, '');
+      } else {
+        const protocol = req.headers['x-forwarded-proto'] || req.protocol || 'http';
+        const host = req.get('host') || 'localhost:5000';
+        connectUrl = `${protocol}://${host}`;
+      }
+    }
+
+    // Tạo mã QR trực tiếp từ URL thực tế của CloudVault
     const qrDataUrl = await QRCode.toDataURL(connectUrl, {
       width: 320,
       margin: 2,
@@ -666,12 +710,11 @@ router.get('/network/connect-info', async (req, res) => {
 
     res.json({
       success: true,
-      port,
       primaryUrl: connectUrl,
-      addresses,
       qrDataUrl
     });
   } catch (err) {
+    console.error('❌ [QR] Lỗi tạo mã QR kết nối mobile:', err);
     res.status(500).json({ error: err.message });
   }
 });

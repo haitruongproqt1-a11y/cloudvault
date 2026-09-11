@@ -75,7 +75,7 @@ export default function StorageView({
   const cloud = storageMetrics.cloud || {};
   const b2 = cloud.b2 || { configured: false, status: 'Chưa kết nối / Vui lòng cấu hình .env' };
   const isB2Ready = Boolean(b2.configured);
-  const quotaLabel = storageMetrics.quota_formatted || `${storageMetrics.max_storage_gb || 100} GB`;
+  const quotaLabel = storageMetrics.quota_formatted || `${storageMetrics.max_storage_gb || 10} GB`;
 
   return (
     <div className="max-w-6xl mx-auto space-y-6 pb-20">

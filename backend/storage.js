@@ -62,7 +62,7 @@ export function getMaxStorageGb() {
   if (envVal && !isNaN(parseFloat(envVal)) && parseFloat(envVal) > 0) {
     return parseFloat(envVal);
   }
-  return 100;
+  return 10;
 }
 
 /**
@@ -76,8 +76,8 @@ export function getStorageQuotaBytes() {
 /**
  * Thống kê dung lượng:
  * 1. Global Storage Pool: Tổng dung lượng thực tế đã sử dụng của TẤT CẢ người dùng cộng lại
- *    trên hạn mức thực tế MAX_STORAGE_GB đọc từ biến môi trường .env.
- * 2. User Personal Stats: Thống kê phần đóng góp và thùng rác riêng của người dùng đang đăng nhập.
+ *    trên hạn mức thực tế MAX_STORAGE_GB đọc từ biến môi trường .env (10GB mốc tối đa B2).
+ * 2. User Personal Stats: Thống kê số lượng theo danh mục (Ảnh, Video, Doc...) của RIÊNG người dùng đang đăng nhập.
  */
 export function getStorageMetrics(userId) {
   const maxStorageGb = getMaxStorageGb();
@@ -109,16 +109,35 @@ export function getStorageMetrics(userId) {
       COALESCE(SUM(CASE WHEN category NOT IN ('photo', 'video', 'document') THEN 1 ELSE 0 END), 0) as other_count
     FROM media
     WHERE is_deleted = 0
-  `).get();
+  `).get() || { total_count: 0, total_size: 0 };
 
-  // B. Thống kê riêng của người dùng hiện tại (Private Tenant stats)
-  const userStats = db.prepare(`
+  // B. Thống kê theo danh mục CỦA RIÊNG NGƯỜI DÙNG HIỆN TẠI (Private Tenant - Cột menu Sidebar)
+  const userCategoryStats = db.prepare(`
     SELECT 
       COUNT(*) as user_count,
-      COALESCE(SUM(size), 0) as user_size
+      COALESCE(SUM(size), 0) as user_size,
+      COALESCE(SUM(CASE WHEN category = 'photo' THEN 1 ELSE 0 END), 0) as user_photo_count,
+      COALESCE(SUM(CASE WHEN category = 'photo' THEN size ELSE 0 END), 0) as user_photo_size,
+      COALESCE(SUM(CASE WHEN category = 'video' THEN 1 ELSE 0 END), 0) as user_video_count,
+      COALESCE(SUM(CASE WHEN category = 'video' THEN size ELSE 0 END), 0) as user_video_size,
+      COALESCE(SUM(CASE WHEN category = 'document' THEN 1 ELSE 0 END), 0) as user_doc_count,
+      COALESCE(SUM(CASE WHEN category = 'document' THEN size ELSE 0 END), 0) as user_doc_size,
+      COALESCE(SUM(CASE WHEN category NOT IN ('photo', 'video', 'document') THEN 1 ELSE 0 END), 0) as user_other_count,
+      COALESCE(SUM(CASE WHEN category NOT IN ('photo', 'video', 'document') THEN size ELSE 0 END), 0) as user_other_size
     FROM media
     WHERE user_id = ? AND is_deleted = 0
-  `).get(userId);
+  `).get(userId) || {
+    user_count: 0,
+    user_size: 0,
+    user_photo_count: 0,
+    user_photo_size: 0,
+    user_video_count: 0,
+    user_video_size: 0,
+    user_doc_count: 0,
+    user_doc_size: 0,
+    user_other_count: 0,
+    user_other_size: 0
+  };
 
   // C. Thống kê thùng rác riêng của người dùng hiện tại
   const userTrashStats = db.prepare(`
@@ -127,7 +146,7 @@ export function getStorageMetrics(userId) {
       COALESCE(SUM(size), 0) as trash_size
     FROM media
     WHERE user_id = ? AND is_deleted = 1
-  `).get(userId);
+  `).get(userId) || { trash_count: 0, trash_size: 0 };
 
   // D. Thống kê đĩa cứng vật lý
   let physicalFree = 0;
@@ -140,7 +159,7 @@ export function getStorageMetrics(userId) {
     }
   } catch (e) {}
 
-  // Tính toán dung lượng thực tế và phần trăm đã dùng
+  // Tính toán dung lượng thực tế và phần trăm đã dùng của TOÀN BỘ HỆ THỐNG
   const usedBytes = globalStats.total_size;
   const remainingBytes = Math.max(0, quotaBytes - usedBytes);
   // Tính % chính xác đến 2 chữ số thập phân
@@ -148,11 +167,11 @@ export function getStorageMetrics(userId) {
     ? Number(Math.min(100, (usedBytes / quotaBytes) * 100).toFixed(2)) 
     : 0;
 
-  // Lấy trạng thái kết nối Cloudflare R2 & Backblaze B2 thực tế từ .env
+  // Lấy trạng thái kết nối Backblaze B2 thực tế từ .env
   const cloud = getCloudStatus();
 
   return {
-    // 1. Chỉ số Global Storage Pool (Dùng chung cho toàn hệ thống)
+    // 1. Chỉ số Global Storage Pool (Dùng chung cho toàn hệ thống - Mốc tối đa 10GB)
     max_storage_gb: maxStorageGb,
     quota_bytes: quotaBytes,
     quota_formatted: formatBytes(quotaBytes),
@@ -161,24 +180,28 @@ export function getStorageMetrics(userId) {
     remaining_bytes: remainingBytes,
     remaining_formatted: formatBytes(remainingBytes),
     used_percent: usedPercent,
-    active_count: globalStats.total_count,
-    photo_count: globalStats.photo_count,
-    photo_size: globalStats.photo_size,
-    photo_size_formatted: formatBytes(globalStats.photo_size),
-    video_count: globalStats.video_count,
-    video_size: globalStats.video_size,
-    video_size_formatted: formatBytes(globalStats.video_size),
-    doc_count: globalStats.doc_count,
-    doc_size: globalStats.doc_size,
-    doc_size_formatted: formatBytes(globalStats.doc_size),
-    other_count: globalStats.other_count,
-    other_size: globalStats.other_size,
-    other_size_formatted: formatBytes(globalStats.other_size),
+    global_total_count: globalStats.total_count,
+    global_total_size: globalStats.total_size,
+    global_total_formatted: formatBytes(globalStats.total_size),
 
-    // 2. Chỉ số cá nhân của người dùng đang đăng nhập
-    user_count: userStats.user_count,
-    user_size: userStats.user_size,
-    user_size_formatted: formatBytes(userStats.user_size),
+    // 2. Chỉ số bộ đếm cá nhân cho Sidebar (CHỈ tệp của người dùng hiện tại - Private Tenant)
+    active_count: userCategoryStats.user_count,
+    photo_count: userCategoryStats.user_photo_count,
+    photo_size: userCategoryStats.user_photo_size,
+    photo_size_formatted: formatBytes(userCategoryStats.user_photo_size),
+    video_count: userCategoryStats.user_video_count,
+    video_size: userCategoryStats.user_video_size,
+    video_size_formatted: formatBytes(userCategoryStats.user_video_size),
+    doc_count: userCategoryStats.user_doc_count,
+    doc_size: userCategoryStats.user_doc_size,
+    doc_size_formatted: formatBytes(userCategoryStats.user_doc_size),
+    other_count: userCategoryStats.user_other_count,
+    other_size: userCategoryStats.user_other_size,
+    other_size_formatted: formatBytes(userCategoryStats.user_other_size),
+
+    user_count: userCategoryStats.user_count,
+    user_size: userCategoryStats.user_size,
+    user_size_formatted: formatBytes(userCategoryStats.user_size),
     trash_count: userTrashStats.trash_count,
     trash_size: userTrashStats.trash_size,
     trash_size_formatted: formatBytes(userTrashStats.trash_size),

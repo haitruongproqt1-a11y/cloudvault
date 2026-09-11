@@ -22,7 +22,7 @@ export default function Sidebar({
   const quotaLabel = storageMetrics?.quota_formatted ? `Dung lượng (${storageMetrics.quota_formatted})` : 'Kho lưu trữ';
 
   const navItems = [
-    { id: 'all', label: 'Tất cả tệp tin', icon: Images, count: storageMetrics?.active_count },
+    { id: 'all', label: 'Tất cả tệp tin', icon: Images, count: storageMetrics?.user_count ?? storageMetrics?.active_count },
     { id: 'photos', label: 'Ảnh', icon: ImageIcon, count: storageMetrics?.photo_count },
     { id: 'videos', label: 'Video', icon: Film, count: storageMetrics?.video_count },
     { id: 'documents', label: 'Tài liệu & Tệp khác', icon: FileText, count: docOtherCount > 0 ? docOtherCount : undefined },
